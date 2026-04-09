@@ -94,6 +94,9 @@ tfoot .grand-hired{font-size:10px;color:#27ae60;margin-top:2px;}
 .slot-wrap .tooltip{display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#333;color:white;font-size:11px;padding:5px 8px;border-radius:5px;white-space:nowrap;z-index:100;max-width:220px;white-space:normal;line-height:1.4;}
 .slot-wrap .tooltip::after{content:'';position:absolute;top:100%;left:12px;border:5px solid transparent;border-top-color:#333;}
 .slot-wrap:hover .tooltip{display:block;}
+.slot-comment-edit{font-size:10px;width:100%;margin-top:4px;padding:3px 6px;border:1px dashed #aaa;border-radius:4px;outline:none;background:#fffbe6;color:#555;}
+.slot-comment-btn{font-size:10px;color:#aaa;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1;}
+.slot-comment-btn:hover{color:#e67e22;}
 .modal-bg.show{display:flex;}
 .modal-box{background:white;border-radius:14px;padding:20px;width:320px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
 .modal-title{font-size:14px;font-weight:600;margin-bottom:4px;}
@@ -409,14 +412,38 @@ function slotsForBand(fd,bandLabel){return getSlots(fd).filter(s=>bandsForCat(s.
 function slotHtml(fd,s){
   const cat=catById(s.catId);
   const tooltipHtml=s.comment?`<div class="tooltip">${s.comment}</div>`:'';
+  const commentIcon=`<span class="slot-comment-btn" title="メモを編集" onclick="editComment('${esc(fd)}','${s.id}',this)">💬</span>`;
   return `<div class="slot-wrap">
     ${tooltipHtml}
-    <div class="slot${s.hired?' hired':''}">
+    <div class="slot${s.hired?' hired':''}" id="slot-${s.id}">
       <input type="checkbox" class="slot-check" ${s.hired?'checked':''} onchange="toggleHiredInFirebase('${esc(fd)}','${s.id}',${s.hired})">
-      <span class="slot-tag" style="background:${cat.bg};color:${cat.color};border:1px solid ${cat.color}40;">${cat.icon} ${cat.name}${s.comment?' 💬':''}</span>
+      <span class="slot-tag" style="background:${cat.bg};color:${cat.color};border:1px solid ${cat.color}40;">${cat.icon} ${cat.name}</span>
+      ${commentIcon}
       <span class="slot-del" onclick="deleteSlotFromFirebase('${esc(fd)}','${s.id}')">x</span>
     </div>
   </div>`;
+}
+
+function editComment(fd, fbId, btn){
+  // すでに編集中なら何もしない
+  const slotDiv=document.getElementById('slot-'+fbId);
+  if(slotDiv.querySelector('.slot-comment-edit'))return;
+  const currentSlot=getSlots(fd).find(s=>s.id===fbId);
+  const current=currentSlot?currentSlot.comment:'';
+  const input=document.createElement('input');
+  input.type='text';
+  input.className='slot-comment-edit';
+  input.value=current;
+  input.placeholder='メモを入力…';
+  input.onclick=e=>e.stopPropagation();
+  input.onblur=()=>{
+    const val=input.value.trim();
+    db.ref('slots/'+encodeKey(fd)+'/'+fbId).update({comment:val});
+    input.remove();
+  };
+  input.onkeydown=e=>{if(e.key==='Enter')input.blur();if(e.key==='Escape'){input.remove();}};
+  slotDiv.parentNode.appendChild(input);
+  input.focus();
 }
 
 // ===== 統計 =====
