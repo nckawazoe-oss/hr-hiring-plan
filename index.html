@@ -97,6 +97,7 @@ tfoot .grand-hired{font-size:10px;color:#27ae60;margin-top:2px;}
 .slot-comment-edit{font-size:10px;width:100%;margin-top:4px;padding:3px 6px;border:1px dashed #aaa;border-radius:4px;outline:none;background:#fffbe6;color:#555;}
 .slot-comment-btn{font-size:10px;color:#aaa;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1;}
 .slot-comment-btn:hover{color:#e67e22;}
+.modal-bg{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.45);z-index:99999;align-items:center;justify-content:center;}
 .modal-bg.show{display:flex;}
 .modal-box{background:white;border-radius:14px;padding:20px;width:320px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
 .modal-title{font-size:14px;font-weight:600;margin-bottom:4px;}
@@ -527,10 +528,9 @@ function openModal(fd,deptLabel){
       <div class="cat-name" style="color:${c.color};">${c.name}</div>
       <div class="cat-range">${c.desc}</div>
     </button>`).join('');
-  // overflow:autoの親要素の影響を受けないようbody直下に移動
   const modal=document.getElementById('modal-bg');
   document.body.appendChild(modal);
-  modal.classList.add('show');
+  modal.style.cssText='display:flex;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.45);z-index:99999;align-items:center;justify-content:center;';
 }
 function selectCat(id){
   _selectedCat=id;
@@ -541,7 +541,8 @@ function selectCat(id){
   document.getElementById('modal-ok').disabled=false;
 }
 function closeModal(){
-  document.getElementById('modal-bg').classList.remove('show');
+  const modal=document.getElementById('modal-bg');
+  modal.style.cssText='display:none;';
   document.getElementById('modal-comment').value='';
   _pendingFd=null;_selectedCat=null;
 }
