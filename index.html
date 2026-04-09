@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>採用計画グリッド</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic UI',sans-serif;background:#f0efe8;color:#1a1a1a;font-size:14px;}
+.app{padding:1.25rem;}
+h1{font-size:17px;font-weight:600;margin-bottom:2px;}
+.subtitle{font-size:12px;color:#888;margin-bottom:1rem;}
+.sync-bar{display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:8px;margin-bottom:1rem;font-size:12px;font-weight:500;background:white;border:1px solid #e8e8e8;}
+.sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.sync-bar.connected{border-color:#b7e4c7;}
+.sync-bar.connected .sync-dot{background:#27ae60;}
+.sync-bar.connecting .sync-dot{background:#f39c12;animation:blink 1s ease-in-out infinite;}
+.sync-bar.error{border-color:#f5c6cb;}
+.sync-bar.error .sync-dot{background:#e74c3c;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.sync-label{flex:1;color:#555;}
+.sync-time{font-size:11px;color:#aaa;}
+.import-area{background:white;border-radius:12px;border:2px dashed #d0cfc8;padding:1.5rem 2rem;margin-bottom:1rem;text-align:center;transition:all 0.2s;cursor:pointer;}
+.import-area.dragover{border-color:#3a5298;background:#f0f4ff;}
+.import-area.loaded{border-style:solid;border-color:#27ae60;background:#f0faf5;}
+.import-area.cloud-loaded{border-style:solid;border-color:#3498db;background:#eaf4fd;}
+.import-icon{font-size:28px;margin-bottom:6px;}
+.import-title{font-size:14px;font-weight:600;margin-bottom:3px;}
+.import-desc{font-size:11px;color:#888;margin-bottom:0.75rem;}
+.import-btn{display:inline-block;font-size:12px;padding:6px 16px;border-radius:7px;border:1px solid #bbb;background:white;cursor:pointer;color:#555;}
+.import-btn:hover{background:#f5f5f0;}
+.import-status{font-size:11px;color:#27ae60;font-weight:600;margin-top:6px;}
+#csv-input{display:none;}
+.toolbar{background:white;border-radius:10px;border:1px solid #e8e8e8;padding:10px 14px;margin-bottom:1rem;display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+.toolbar-note{font-size:11px;color:#777;flex:1;}
+.btn{font-size:11px;padding:5px 12px;border-radius:6px;cursor:pointer;border:1px solid #ddd;background:white;}
+.btn:hover{background:#f5f5f0;}
+.btn-danger{background:#fff0f0;color:#c0392b;border-color:#f5c6cb;}
+.btn-danger:hover{background:#ffe0e0;}
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem;}
+.stat-card{background:white;border:1px solid #e8e8e8;border-radius:8px;padding:9px 12px;}
+.stat-label{font-size:10px;color:#888;margin-bottom:2px;}
+.stat-val{font-size:18px;font-weight:600;}
+.stat-val.need{color:#c0392b;}
+.stat-val.hired{color:#27ae60;}
+.legend{display:flex;gap:12px;margin-bottom:.75rem;flex-wrap:wrap;align-items:center;font-size:11px;color:#555;}
+.leg-item{display:flex;align-items:center;gap:4px;}
+.leg-chip{display:inline-block;width:60px;height:18px;border-radius:3px;}
+.tbl-wrap{overflow-x:auto;}
+table{border-collapse:collapse;min-width:900px;width:100%;font-size:11px;}
+thead th{background:#e8e6df;color:#333;padding:6px 8px;font-weight:600;white-space:nowrap;text-align:center;border:1px solid #ccc;}
+thead th.h-dept{text-align:left;min-width:52px;background:#d4d1c8;color:#222;}
+thead th.h-sub{text-align:left;min-width:80px;background:#d4d1c8;color:#222;}
+th.h-age-60{background:#f5e6d8;color:#7a3a18;min-width:110px;}
+th.h-age-50{background:#faf0d0;color:#6b4e00;min-width:110px;}
+th.h-age-40{background:#dff0d4;color:#2e5a14;min-width:110px;}
+th.h-age-30{background:#d4eaf7;color:#174e6e;min-width:110px;}
+th.h-age-20{background:#dce6f8;color:#2a3d78;min-width:110px;}
+th.h-age-19{background:#ecddf8;color:#4a1e6e;min-width:110px;}
+th.h-total{background:#d4d1c8;color:#222;min-width:54px;width:54px;font-size:11px;position:sticky;right:0;z-index:2;border-left:2px solid #aaa;}
+td.total-cell{text-align:center;vertical-align:middle;background:#f5f3ee;border:1px solid #ccc;border-left:2px solid #aaa;position:sticky;right:0;z-index:1;min-width:54px;width:54px;padding:4px 2px;}
+.total-num{font-size:18px;font-weight:700;color:#c0392b;line-height:1;}
+.total-num.zero{font-size:13px;color:#bbb;font-weight:400;}
+.total-hired{font-size:9px;color:#27ae60;margin-top:2px;}
+.dept-cell{font-weight:700;font-size:11px;color:white;text-align:center;vertical-align:middle;padding:5px 3px;border:1px solid rgba(0,0,0,0.2);width:44px;}
+.dept-cell div{writing-mode:vertical-rl;letter-spacing:2px;white-space:nowrap;}
+.sub-cell{font-size:10px;font-weight:500;color:#333;padding:4px 8px;border:1px solid #ddd;white-space:nowrap;vertical-align:top;}
+.sub-cell.direct{font-style:italic;color:#999;}
+.age-cell{padding:4px 5px;border:1px solid #ddd;vertical-align:top;min-width:110px;max-width:160px;}
+.chip{font-size:10px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chip-normal{background:#dbeafe;color:#1d4ed8;}
+.chip-retiring{background:#fef9c3;color:#7c3a00;outline:2px solid #f59e0b;}
+.chip-shokutaku{background:#f1f0e8;color:#666;}
+.slot-area{margin-top:4px;display:flex;flex-direction:column;gap:3px;}
+@keyframes pulse-border{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,0.4);}50%{box-shadow:0 0 0 3px rgba(231,76,60,0.12);}}
+.slot{display:flex;align-items:center;gap:5px;padding:4px 7px;border-radius:5px;border:2px dashed #e74c3c;background:#fff5f5;min-height:26px;animation:pulse-border 2s ease-in-out infinite;position:relative;}
+.slot::before{content:'●';font-size:8px;color:#e74c3c;position:absolute;top:-5px;left:4px;background:white;padding:0 2px;line-height:1;}
+@keyframes hired-glow{0%,100%{box-shadow:0 0 0 0 rgba(39,174,96,0.4);}50%{box-shadow:0 0 4px 2px rgba(39,174,96,0.2);}}
+.slot.hired{border-style:solid;border-color:#27ae60;background:#f0faf5;animation:hired-glow 2s ease-in-out infinite;}
+.slot.hired::before{content:'✓';color:#27ae60;}
+.slot-tag{font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;flex-shrink:0;white-space:nowrap;}
+.slot-check{width:16px;height:16px;cursor:pointer;accent-color:#27ae60;flex-shrink:0;}
+.slot-del{font-size:13px;color:#ffb3b3;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1;font-weight:bold;}
+.slot-del:hover{color:#e74c3c;}
+.add-btn{display:block;width:100%;margin-top:4px;font-size:10px;color:#ccc;border:1px dashed #e0e0e0;border-radius:4px;padding:3px 4px;background:none;cursor:pointer;text-align:center;transition:all 0.2s;}
+.add-btn:hover{border-color:#e74c3c;color:#e74c3c;background:#fff5f5;font-weight:600;}
+.sep-line{border-top:2px dashed #f5c6c6;margin:4px 0;opacity:0.7;}
+tfoot td{background:#e8e4dc;border:1px solid #bbb;padding:8px 6px;font-size:11px;font-weight:600;color:#333;}
+tfoot td.foot-label{text-align:right;color:#555;vertical-align:middle;}
+tfoot td.foot-total{background:#d4d1c8;border-left:2px solid #aaa;position:sticky;right:0;text-align:center;vertical-align:middle;}
+tfoot .grand-total{font-size:20px;font-weight:700;color:#c0392b;line-height:1;}
+tfoot .grand-hired{font-size:10px;color:#27ae60;margin-top:2px;}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal-box{background:white;border-radius:14px;padding:20px;width:320px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+.modal-title{font-size:14px;font-weight:600;margin-bottom:4px;}
+.modal-sub{font-size:11px;color:#888;margin-bottom:14px;}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.cat-btn{border:2px solid transparent;border-radius:8px;padding:9px 8px;cursor:pointer;text-align:left;transition:all 0.15s;background:#f8f8f6;}
+.cat-btn:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.12);}
+.cat-icon{font-size:14px;margin-bottom:3px;}
+.cat-name{font-size:11px;font-weight:700;margin-bottom:2px;}
+.cat-range{font-size:9px;color:#888;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+.modal-cancel{font-size:12px;padding:6px 14px;border-radius:6px;border:1px solid #ddd;background:white;cursor:pointer;}
+.modal-ok{font-size:12px;padding:6px 14px;border-radius:6px;border:none;background:#1a1a1a;color:white;cursor:pointer;font-weight:600;}
+.modal-ok:disabled{background:#ccc;cursor:not-allowed;}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>採用計画グリッド</h1>
+  <p class="subtitle">SmartHR CSVを読み込んで使用 ／ 採用スロットはチームでリアルタイム共有</p>
+
+  <div class="sync-bar connecting" id="sync-bar">
+    <div class="sync-dot"></div>
+    <div class="sync-label" id="sync-label">Firebaseに接続中...</div>
+    <div class="sync-time" id="sync-time"></div>
+  </div>
+
+  <div class="import-area" id="import-area" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)" onclick="document.getElementById('csv-input').click()">
+    <div class="import-icon" id="import-icon">☁</div>
+    <div class="import-title" id="import-title">SmartHR CSVを読み込む</div>
+    <div class="import-desc" id="import-desc">ファイルをドラッグ＆ドロップ、またはクリックして選択<br>※ 前回アップロードがあればクラウドから自動で読み込まれます</div>
+    <label class="import-btn" onclick="event.stopPropagation();document.getElementById('csv-input').click()">ファイルを選択（更新する場合）</label>
+    <div class="import-status" id="import-status"></div>
+    <input type="file" id="csv-input" accept=".csv" onchange="onFileSelect(event)">
+  </div>
+
+  <div id="main-content" style="display:none;">
+    <div class="toolbar">
+      <div class="toolbar-note">＋ で採用カテゴリを選択 ／ チェックで採用済みに ／ x で削除 ／ 変更は自動でクラウドに保存されます</div>
+      <button class="btn" onclick="exportCSV()">CSVエクスポート</button>
+      <button class="btn btn-danger" onclick="clearHired()">採用済みを一括削除</button>
+    </div>
+    <div class="stats-bar" id="stats-bar"></div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-chip" style="background:#dbeafe;border:1px solid #93c5fd;"></div>在籍（役職なし）</div>
+      <div class="leg-item"><div class="leg-chip" style="background:#1e3a5f;"></div>在籍（役職あり）</div>
+      <div class="leg-item"><div class="leg-chip" style="background:#fef9c3;outline:2px solid #f59e0b;"></div>定年3年以内</div>
+    </div>
+    <div class="tbl-wrap">
+      <table id="main-table">
+        <thead><tr>
+          <th class="h-dept">部</th>
+          <th class="h-sub">課・室</th>
+          <th class="h-age-60">60歳以上</th>
+          <th class="h-age-50">50代</th>
+          <th class="h-age-40">40代</th>
+          <th class="h-age-30">30代</th>
+          <th class="h-age-20">20代</th>
+          <th class="h-age-19">〜19歳</th>
+          <th class="h-total">採用希望<br><span style="font-size:9px;font-weight:400;">合計</span></th>
+        </tr></thead>
+        <tbody id="main-tbody"></tbody>
+        <tfoot id="main-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal-box">
+    <div class="modal-title">採用カテゴリを選択</div>
+    <div class="modal-sub" id="modal-dept-label"></div>
+    <div class="cat-grid" id="cat-grid"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="modal-ok" id="modal-ok" onclick="confirmAdd()" disabled>追加する</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+// ===== Firebase 初期化 =====
+firebase.initializeApp({
+  apiKey: "AIzaSyDQG_Ztphy3aHQS5zQBHA43Y3jdGwKh588",
+  authDomain: "hr-hiring-plan.firebaseapp.com",
+  databaseURL: "https://hr-hiring-plan-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "hr-hiring-plan",
+  storageBucket: "hr-hiring-plan.firebasestorage.app",
+  messagingSenderId: "557058205112",
+  appId: "1:557058205112:web:663a02fadee5def5cadb4d"
+});
+const db = firebase.database();
+
+// ===== 接続状態監視 =====
+db.ref('.info/connected').on('value', snap => {
+  const bar = document.getElementById('sync-bar');
+  const label = document.getElementById('sync-label');
+  if (snap.val()) {
+    bar.className = 'sync-bar connected';
+    label.textContent = 'クラウドと同期中 — 変更はチームにリアルタイムで反映されます';
+  } else {
+    bar.className = 'sync-bar error';
+    label.textContent = 'オフライン — 接続が回復すると自動で同期されます';
+  }
+});
+
+// ===== CSV読み込み =====
+function onDragOver(e){e.preventDefault();document.getElementById('import-area').classList.add('dragover');}
+function onDragLeave(e){document.getElementById('import-area').classList.remove('dragover');}
+function onDrop(e){e.preventDefault();document.getElementById('import-area').classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)loadFile(f);}
+function onFileSelect(e){const f=e.target.files[0];if(f)loadFile(f);}
+
+function loadFile(file){
+  if(!file.name.endsWith('.csv')){alert('CSVファイルを選択してください');return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      parseCSV(e.target.result);
+      saveEmployeesToFirebase();
+      setImportUI('csv', file.name);
+      document.getElementById('main-content').style.display='block';
+      render();
+    }catch(err){alert('CSVの読み込みに失敗しました: '+err.message);}
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function setImportUI(source, name){
+  const area=document.getElementById('import-area');
+  if(source==='cloud'){
+    area.className='import-area cloud-loaded';
+    document.getElementById('import-icon').textContent='☁';
+    document.getElementById('import-title').textContent='クラウドから人員データを読み込みました';
+    document.getElementById('import-desc').textContent=EMPLOYEES.length+'名のデータ（前回アップロード済み）';
+    document.getElementById('import-status').textContent='CSVをドロップすると最新データに更新できます';
+  } else {
+    area.className='import-area loaded';
+    document.getElementById('import-icon').textContent='✓';
+    document.getElementById('import-title').textContent=name+' を読み込みました';
+    document.getElementById('import-desc').textContent=EMPLOYEES.length+'名のデータをクラウドに保存しました';
+    document.getElementById('import-status').textContent='クリックで再読み込み';
+  }
+}
+
+// ===== Firebase: 人員データ保存・読み込み =====
+function saveEmployeesToFirebase(){
+  const data=EMPLOYEES.map(e=>({
+    age:e.age, topDept:e.topDept, fullDept:e.fullDept,
+    roleStr:e.roleStr||'', isShokutaku:e.isShokutaku?1:0, nearRetire:e.nearRetire?1:0
+  }));
+  db.ref('employees').set(data).catch(err=>console.error('保存エラー:',err));
+}
+
+function loadEmployeesFromFirebase(callback){
+  db.ref('employees').once('value').then(snap=>{
+    const data=snap.val();
+    if(!data||!Array.isArray(data)||data.length===0){callback(false);return;}
+    EMPLOYEES=data.map(e=>({
+      age:e.age, topDept:e.topDept, fullDept:e.fullDept,
+      roleStr:e.roleStr||'', isShokutaku:!!e.isShokutaku, nearRetire:!!e.nearRetire
+    }));
+    buildDeptOrder();
+    callback(true);
+  }).catch(()=>callback(false));
+}
+
+// ===== Firebase: スロットのリアルタイム同期 =====
+const slots={};
+
+db.ref('slots').on('value', snap=>{
+  const data=snap.val()||{};
+  Object.keys(slots).forEach(k=>delete slots[k]);
+  Object.entries(data).forEach(([encKey, slotMap])=>{
+    if(!slotMap)return;
+    const deptKey=decodeKey(encKey);
+    slots[deptKey]=Object.entries(slotMap).map(([fbId,s])=>({id:fbId,catId:s.catId,hired:!!s.hired}));
+  });
+  if(EMPLOYEES.length>0&&document.getElementById('main-content').style.display!=='none'){
+    const now=new Date();
+    document.getElementById('sync-time').textContent='最終更新 '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+    render();
+  }
+});
+
+function addSlotToFirebase(deptKey,catId){
+  db.ref('slots/'+encodeKey(deptKey)).push({catId,hired:false});
+}
+function toggleHiredInFirebase(deptKey,fbId,current){
+  db.ref('slots/'+encodeKey(deptKey)+'/'+fbId).update({hired:!current});
+}
+function deleteSlotFromFirebase(deptKey,fbId){
+  db.ref('slots/'+encodeKey(deptKey)+'/'+fbId).remove();
+}
+function clearHired(){
+  if(!confirm('採用済みのスロットを全て削除します。よろしいですか？'))return;
+  const updates={};
+  Object.entries(slots).forEach(([deptKey,arr])=>{
+    arr.filter(s=>s.hired).forEach(s=>{updates['slots/'+encodeKey(deptKey)+'/'+s.id]=null;});
+  });
+  db.ref().update(updates);
+}
+
+// Firebaseキー用エンコード（./#/$/ [ ] は使えない）
+function encodeKey(k){return k.replace(/\./g,'__d__').replace(/\//g,'__s__').replace(/#/g,'__h__').replace(/\$/g,'__dl__').replace(/\[/g,'__lb__').replace(/\]/g,'__rb__');}
+function decodeKey(k){return k.replace(/__d__/g,'.').replace(/__s__/g,'/').replace(/__h__/g,'#').replace(/__dl__/g,'$').replace(/__lb__/g,'[').replace(/__rb__/g,']');}
+
+// ===== SmartHR CSV パース =====
+let EMPLOYEES=[];
+let TOP_DEPTS=[];
+const DEPT_ORDER=['総務部','監理部','関連事業室','技術部','生産部','工務部','品質保証部','本社','国際業務室','業務部','オートタワー事業部','営業企画室','事業開発室','本社営業部','大阪支店','新潟サービスセンター','長野支店','札幌支店','東北支店','索道安全管理室'];
+
+function buildDeptOrder(){
+  const allTop=[...new Set(EMPLOYEES.map(e=>e.topDept))];
+  TOP_DEPTS=[...DEPT_ORDER.filter(d=>allTop.includes(d)),...allTop.filter(d=>!DEPT_ORDER.includes(d)).sort()];
+}
+
+function parseCSVLine(line){
+  const result=[];let inQuote=false,cur='';
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){inQuote=!inQuote;}
+    else if(c===','&&!inQuote){result.push(cur.trim());cur='';}
+    else{cur+=c;}
+  }
+  result.push(cur.trim());return result;
+}
+
+function calcAge(birthStr){
+  const m=birthStr.match(/(\d{4})\/(\d+)\/(\d+)/);
+  if(!m)return null;
+  const now=new Date(),birth=new Date(+m[1],+m[2]-1,+m[3]);
+  let a=now.getFullYear()-birth.getFullYear();
+  if(now<new Date(now.getFullYear(),birth.getMonth(),birth.getDate()))a--;
+  return a;
+}
+
+function parseCSV(text){
+  if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2)throw new Error('データが見つかりません');
+  const header=parseCSVLine(lines[0]);
+  const birthIdx=header.findIndex(h=>h.includes('生年月日'));
+  const employIdx=header.findIndex(h=>h.includes('雇用形態'));
+  const deptIdxs=[],roleIdxs=[];
+  for(let i=0;i<header.length;i++){
+    if(header[i].match(/部署\d+ 部署/))deptIdxs.push(i);
+    if(header[i].match(/役職\d+ 役職/))roleIdxs.push(i);
+  }
+  if(birthIdx<0)throw new Error('生年月日カラムが見つかりません');
+  EMPLOYEES=[];
+  for(let i=1;i<lines.length;i++){
+    const row=parseCSVLine(lines[i]);
+    if(!row[birthIdx])continue;
+    const age=calcAge(row[birthIdx]);
+    if(!age)continue;
+    let fullDept='未所属';
+    for(const idx of deptIdxs){if(row[idx]&&row[idx].trim())fullDept=row[idx].trim();}
+    let roleStr='';
+    for(const idx of roleIdxs){if(row[idx]&&row[idx].trim()){roleStr=row[idx].trim();break;}}
+    const employ=row[employIdx]||'一般';
+    const isShokutaku=employ.includes('嘱託')||employ.includes('契約')||employ.includes('パート')||employ.includes('アルバイト')||employ.includes('役員');
+    EMPLOYEES.push({age,topDept:fullDept.split('/')[0],fullDept,roleStr,isShokutaku,nearRetire:age>=62});
+  }
+  if(EMPLOYEES.length===0)throw new Error('有効な社員データが見つかりません');
+  buildDeptOrder();
+}
+
+// ===== 役職カラー =====
+const ROLE_COLORS={'代表取締役':{bg:'#4a1b0c',tx:'#fff'},'取締役':{bg:'#6d1f2b',tx:'#fff'},'執行役員':{bg:'#7b3f00',tx:'#fff'},'常務執行役員':{bg:'#7b3f00',tx:'#fff'},'上席執行役員':{bg:'#7b3f00',tx:'#fff'},'部長':{bg:'#1e3a5f',tx:'#fff'},'副部長':{bg:'#1e3a5f',tx:'#ddd'},'次長':{bg:'#1e4d2b',tx:'#fff'},'付次長':{bg:'#1e4d2b',tx:'#ddd'},'室長':{bg:'#2d4a6b',tx:'#fff'},'所長':{bg:'#2d4a6b',tx:'#fff'},'支店長':{bg:'#2d4a6b',tx:'#fff'},'課長':{bg:'#1a5276',tx:'#fff'},'付課長':{bg:'#1a5276',tx:'#ddd'},'係長':{bg:'#0e6655',tx:'#fff'},'主任':{bg:'#1a5c38',tx:'#fff'},'副主任':{bg:'#1a5c38',tx:'#ddd'}};
+const ROLE_LABELS=Object.keys(ROLE_COLORS);
+function getRoleColor(r){if(!r)return null;for(const k of ROLE_LABELS)if(r.includes(k))return ROLE_COLORS[k];return null;}
+
+// ===== 採用カテゴリ =====
+const CATEGORIES=[
+  {id:'young',  name:'若手',       icon:'★', color:'#2ecc71', bg:'#eafaf1', ageMin:0,  ageMax:29,  desc:'〜29歳'},
+  {id:'mid',    name:'中堅',       icon:'▲', color:'#3498db', bg:'#eaf4fd', ageMin:30, ageMax:44,  desc:'30〜44歳'},
+  {id:'mgr',    name:'管理職候補', icon:'◆', color:'#8e44ad', bg:'#f5eef8', ageMin:35, ageMax:49,  desc:'35〜49歳'},
+  {id:'senior', name:'即戦力',     icon:'■', color:'#e67e22', bg:'#fef5e7', ageMin:30, ageMax:55,  desc:'経験者・年齢不問'},
+  {id:'expert', name:'専門職',     icon:'●', color:'#1a5276', bg:'#eaf0fb', ageMin:0,  ageMax:999, desc:'資格・技術重視'},
+  {id:'any',    name:'年齢不問',   icon:'○', color:'#7f8c8d', bg:'#f2f3f4', ageMin:0,  ageMax:999, desc:'柔軟に対応'},
+];
+function catById(id){return CATEGORIES.find(c=>c.id===id);}
+
+const AGE_BANDS=[{label:'60歳以上',min:60,max:999},{label:'50代',min:50,max:59},{label:'40代',min:40,max:49},{label:'30代',min:30,max:39},{label:'20代',min:20,max:29},{label:'〜19歳',min:0,max:19}];
+function bandsForCat(catId){const cat=catById(catId);if(!cat)return[];return AGE_BANDS.filter(b=>b.min<=cat.ageMax&&b.max>=cat.ageMin);}
+
+// ===== 部署ソート =====
+const SUB_ORDER={'技術部':['技術部/電気課','技術部/機械第１課','技術部/機械第２課','技術部/企画設計課','技術部/積算課','技術部/技術管理課'],'生産部':['生産部/生産管理課','生産部/物流課','生産部/購買課','生産部/生産技術課','生産部/製造課'],'生産部/製造課':['生産部/製造課/ユニット1','生産部/製造課/ユニット2','生産部/製造課/ユニット3','生産部/製造課/ユニット4'],'品質保証部':['品質保証部/品質管理課','品質保証部/技術サービス課','品質保証部/検査課'],'業務部':['業務部/秘書課','業務部/業務課'],'オートタワー事業部':['オートタワー事業部/技術課','オートタワー事業部/サービス課','オートタワー事業部/工務課','オートタワー事業部/営業課'],'本社営業部':['本社営業部/営業課','本社営業部/アジア市場開拓室','本社営業部/営業企画室'],'大阪支店':['大阪支店/営業課','大阪支店/工務課','大阪支店/庶務課','大阪支店/福岡営業所'],'新潟サービスセンター':['新潟サービスセンター/営業課','新潟サービスセンター/工務課','新潟サービスセンター/庶務課'],'長野支店':['長野支店/営業課','長野支店/工務課','長野支店/庶務課','長野支店/高山サービスセンター'],'札幌支店':['札幌支店/営業課','札幌支店/工務課','札幌支店/庶務課'],'東北支店':['東北支店/営業課','東北支店/工務課','東北支店/庶務課'],'工務部':['工務部/工務課'],'総務部':['総務部/総務課'],'監理部':['監理部/経理課']};
+function sortedSubs(pk,subs){const ord=SUB_ORDER[pk]||[];return[...ord.filter(s=>subs.includes(s)),...subs.filter(s=>!ord.includes(s)).sort()];}
+function getSlots(fd){return slots[fd]||[];}
+
+// ===== チップHTML =====
+function chipHtml(e){
+  const rc=getRoleColor(e.roleStr);
+  let style='',cls='chip';
+  if(e.nearRetire){cls='chip chip-retiring';}
+  else if(e.isShokutaku){cls='chip chip-shokutaku';}
+  else if(rc){style=`background:${rc.bg};color:${rc.tx};`;}
+  else{cls='chip chip-normal';}
+  const roleShort=rc?e.roleStr.split(',')[0].replace('［専門職］','').replace('付','').trim():'';
+  return `<div class="${cls}" style="${style}">${(roleShort?roleShort+' ':'')+e.age+'歳'}</div>`;
+}
+
+function slotsForBand(fd,bandLabel){return getSlots(fd).filter(s=>bandsForCat(s.catId).some(b=>b.label===bandLabel));}
+
+function slotHtml(fd,s){
+  const cat=catById(s.catId);
+  return `<div class="slot${s.hired?' hired':''}">
+    <input type="checkbox" class="slot-check" ${s.hired?'checked':''} onchange="toggleHiredInFirebase('${esc(fd)}','${s.id}',${s.hired})">
+    <span class="slot-tag" style="background:${cat.bg};color:${cat.color};border:1px solid ${cat.color}40;">${cat.icon} ${cat.name}</span>
+    <span class="slot-del" onclick="deleteSlotFromFirebase('${esc(fd)}','${s.id}')">x</span>
+  </div>`;
+}
+
+// ===== 統計 =====
+function updateStats(){
+  let total=0,hired=0;
+  for(const k of Object.keys(slots)){total+=slots[k].length;hired+=slots[k].filter(s=>s.hired).length;}
+  document.getElementById('stats-bar').innerHTML=
+    `<div class="stat-card"><div class="stat-label">現在在籍</div><div class="stat-val">${EMPLOYEES.length}名</div></div>`+
+    `<div class="stat-card"><div class="stat-label">採用希望スロット</div><div class="stat-val need">${total}件</div></div>`+
+    `<div class="stat-card"><div class="stat-label">採用済み</div><div class="stat-val hired">${hired}件</div></div>`+
+    `<div class="stat-card"><div class="stat-label">未充足</div><div class="stat-val">${total-hired}件</div></div>`;
+}
+
+const GBC=['#6ea8d8','#7abf8a','#d4a843','#c47ba0','#7090cc','#d49060','#60b0c0','#a878b0','#cc7070','#c8b840','#9080c0','#60b0a0'];
+const GBG=['#e8f4fd','#e8f8f0','#fef9e7','#fdf2f8','#f0f4ff','#fff4e6','#f0fffe','#f5f0ff','#fff0f0','#fffbe6','#f0e6ff','#e6fff4'];
+const deptColors={};
+
+// ===== メインレンダリング =====
+function render(){
+  if(!EMPLOYEES.length)return;
+  TOP_DEPTS.forEach((t,i)=>deptColors[t]={bg:GBG[i%GBG.length],bd:GBC[i%GBC.length]});
+  let html='';
+  TOP_DEPTS.forEach(top=>{
+    const te=EMPLOYEES.filter(e=>e.topDept===top);
+    if(!te.length)return;
+    const c=deptColors[top]||{bg:'#f5f5f0',bd:'#aaa'};
+    const subs=[...new Set(te.filter(e=>e.fullDept!==top).map(e=>{const p=e.fullDept.split('/');return p.length>=2?p[0]+'/'+p[1]:e.fullDept;}))];
+    const sd=sortedSubs(top,subs);
+    const sf=[];
+    sd.forEach(sub=>{sf.push(sub);const ss=[...new Set(te.filter(e=>e.fullDept.startsWith(sub+'/')&&e.fullDept.split('/').length===3).map(e=>e.fullDept))];sortedSubs(sub,ss).forEach(s=>sf.push(s));});
+    const directMembers=te.filter(e=>e.fullDept===top);
+    const rows=[];
+    if(directMembers.length>0||sf.length===0)rows.push({key:top,label:'部直属',members:directMembers,direct:true});
+    sf.forEach(dept=>rows.push({key:dept,label:dept.split('/').pop(),members:te.filter(e=>e.fullDept===dept),direct:false}));
+    rows.forEach((row,idx)=>{
+      html+='<tr>';
+      if(idx===0)html+=`<td class="dept-cell" rowspan="${rows.length}" style="background:${c.bd};"><div>${top}</div></td>`;
+      const pl=(row.key.split('/').length-1)*6+4;
+      html+=`<td class="sub-cell${row.direct?' direct':''}" style="background:${c.bg};padding-left:${pl}px;">${row.label}</td>`;
+      AGE_BANDS.forEach(band=>{
+        const ms=row.members.filter(e=>e.age>=band.min&&e.age<=band.max);
+        const bandSlots=slotsForBand(row.key,band.label);
+        html+=`<td class="age-cell" style="background:${c.bg};">`;
+        ms.forEach(e=>{html+=chipHtml(e);});
+        if(ms.length>0&&bandSlots.length>0)html+='<div class="sep-line"></div>';
+        if(bandSlots.length>0){
+          html+='<div class="slot-area">';
+          bandSlots.filter(s=>{const bands=bandsForCat(s.catId);return bands.length===0||bands[0].label===band.label;}).forEach(s=>{html+=slotHtml(row.key,s);});
+          html+='</div>';
+        }
+        html+='</td>';
+      });
+      const rowSlots=getSlots(row.key);
+      const rowTotal=rowSlots.length,rowHired=rowSlots.filter(s=>s.hired).length;
+      const numHtml=rowTotal===0?`<div class="total-num zero">—</div>`:`<div class="total-num">${rowTotal}</div>${rowHired>0?`<div class="total-hired">✓${rowHired}</div>`:''}`;
+      const deptDisp=row.label==='部直属'?top+' 部直属':row.label;
+      html+=`<td class="total-cell">${numHtml}<button class="add-btn" onclick="openModal('${esc(row.key)}','${esc(deptDisp)}')" style="margin-top:6px;font-size:11px;color:#666;border-color:#555;padding:4px;">＋</button></td>`;
+      html+='</tr>';
+    });
+  });
+  document.getElementById('main-tbody').innerHTML=html;
+  let grandTotal=0,grandHired=0;
+  for(const k of Object.keys(slots)){grandTotal+=slots[k].length;grandHired+=slots[k].filter(s=>s.hired).length;}
+  document.getElementById('main-tfoot').innerHTML=`<tr>
+    <td class="foot-label" colspan="8" style="text-align:right;padding-right:12px;">採用希望 合計</td>
+    <td class="foot-total">${grandTotal===0?'<div style="font-size:13px;color:#bbb;">—</div>':`<div class="grand-total">${grandTotal}</div>${grandHired>0?`<div class="grand-hired">✓${grandHired}</div>`:''}`}</td>
+  </tr>`;
+  updateStats();
+}
+
+// ===== モーダル =====
+let _pendingFd=null,_selectedCat=null;
+function openModal(fd,deptLabel){
+  _pendingFd=fd;_selectedCat=null;
+  document.getElementById('modal-dept-label').textContent=deptLabel;
+  document.getElementById('modal-ok').disabled=true;
+  document.getElementById('cat-grid').innerHTML=CATEGORIES.map(c=>`
+    <button class="cat-btn" id="cat-${c.id}" onclick="selectCat('${c.id}')" style="border-color:#eee;">
+      <div class="cat-icon">${c.icon}</div>
+      <div class="cat-name" style="color:${c.color};">${c.name}</div>
+      <div class="cat-range">${c.desc}</div>
+    </button>`).join('');
+  document.getElementById('modal-bg').classList.add('show');
+}
+function selectCat(id){
+  _selectedCat=id;
+  document.querySelectorAll('.cat-btn').forEach(b=>{b.style.borderColor='#eee';b.style.background='#f8f8f6';});
+  const cat=catById(id);
+  document.getElementById('cat-'+id).style.borderColor=cat.color;
+  document.getElementById('cat-'+id).style.background=cat.bg;
+  document.getElementById('modal-ok').disabled=false;
+}
+function closeModal(){document.getElementById('modal-bg').classList.remove('show');_pendingFd=null;_selectedCat=null;}
+function confirmAdd(){
+  if(!_pendingFd||!_selectedCat)return;
+  addSlotToFirebase(_pendingFd,_selectedCat);
+  closeModal();
+}
+function esc(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+
+// ===== CSV エクスポート =====
+function exportCSV(){
+  const rows=[['部','課・室','カテゴリ','内容','採用済み']];
+  for(const fd of Object.keys(slots)){
+    for(const s of slots[fd]){
+      const cat=catById(s.catId);
+      const parts=fd.split('/');
+      rows.push([parts[0],fd===parts[0]?'部直属':fd.split('/').slice(1).join('/'),cat.name,cat.desc,s.hired?'済み':'未']);
+    }
+  }
+  const csv=rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='採用計画グリッド.csv';a.click();URL.revokeObjectURL(url);
+}
+
+// ===== 起動時：クラウドから人員データを試みる =====
+loadEmployeesFromFirebase(found=>{
+  if(found){
+    setImportUI('cloud','');
+    document.getElementById('main-content').style.display='block';
+    render();
+  }
+});
+</script>
+</body>
+</html>
