@@ -90,7 +90,10 @@ tfoot td.foot-label{text-align:right;color:#555;vertical-align:middle;}
 tfoot td.foot-total{background:#d4d1c8;border-left:2px solid #aaa;position:sticky;right:0;text-align:center;vertical-align:middle;}
 tfoot .grand-total{font-size:20px;font-weight:700;color:#c0392b;line-height:1;}
 tfoot .grand-hired{font-size:10px;color:#27ae60;margin-top:2px;}
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;}
+.slot-wrap{position:relative;display:inline-block;width:100%;}
+.slot-wrap .tooltip{display:none;position:absolute;bottom:calc(100% + 4px);left:0;background:#333;color:white;font-size:11px;padding:5px 8px;border-radius:5px;white-space:nowrap;z-index:100;max-width:220px;white-space:normal;line-height:1.4;}
+.slot-wrap .tooltip::after{content:'';position:absolute;top:100%;left:12px;border:5px solid transparent;border-top-color:#333;}
+.slot-wrap:hover .tooltip{display:block;}
 .modal-bg.show{display:flex;}
 .modal-box{background:white;border-radius:14px;padding:20px;width:320px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
 .modal-title{font-size:14px;font-weight:600;margin-bottom:4px;}
@@ -164,6 +167,10 @@ tfoot .grand-hired{font-size:10px;color:#27ae60;margin-top:2px;}
     <div class="modal-title">採用カテゴリを選択</div>
     <div class="modal-sub" id="modal-dept-label"></div>
     <div class="cat-grid" id="cat-grid"></div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">メモ（任意）</label>
+      <input type="text" id="modal-comment" placeholder="例：営業経験3年以上希望" style="width:100%;font-size:12px;padding:7px 10px;border:1px solid #ddd;border-radius:6px;outline:none;">
+    </div>
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeModal()">キャンセル</button>
       <button class="modal-ok" id="modal-ok" onclick="confirmAdd()" disabled>追加する</button>
@@ -214,6 +221,7 @@ function loadFile(file){
       saveEmployeesToFirebase();
       setImportUI('csv', file.name);
       document.getElementById('main-content').style.display='block';
+      // スロットはFirebaseからリアルタイム同期のため、CSV再読み込みでも消えない
       render();
     }catch(err){alert('CSVの読み込みに失敗しました: '+err.message);}
   };
@@ -268,7 +276,7 @@ db.ref('slots').on('value', snap=>{
   Object.entries(data).forEach(([encKey, slotMap])=>{
     if(!slotMap)return;
     const deptKey=decodeKey(encKey);
-    slots[deptKey]=Object.entries(slotMap).map(([fbId,s])=>({id:fbId,catId:s.catId,hired:!!s.hired}));
+    slots[deptKey]=Object.entries(slotMap).map(([fbId,s])=>({id:fbId,catId:s.catId,hired:!!s.hired,comment:s.comment||''}));
   });
   if(EMPLOYEES.length>0&&document.getElementById('main-content').style.display!=='none'){
     const now=new Date();
@@ -277,8 +285,8 @@ db.ref('slots').on('value', snap=>{
   }
 });
 
-function addSlotToFirebase(deptKey,catId){
-  db.ref('slots/'+encodeKey(deptKey)).push({catId,hired:false});
+function addSlotToFirebase(deptKey,catId,comment){
+  db.ref('slots/'+encodeKey(deptKey)).push({catId,hired:false,comment:comment||''});
 }
 function toggleHiredInFirebase(deptKey,fbId,current){
   db.ref('slots/'+encodeKey(deptKey)+'/'+fbId).update({hired:!current});
@@ -367,12 +375,12 @@ function getRoleColor(r){if(!r)return null;for(const k of ROLE_LABELS)if(r.inclu
 
 // ===== 採用カテゴリ =====
 const CATEGORIES=[
-  {id:'young',  name:'若手',       icon:'★', color:'#2ecc71', bg:'#eafaf1', ageMin:0,  ageMax:29,  desc:'〜29歳'},
-  {id:'mid',    name:'中堅',       icon:'▲', color:'#3498db', bg:'#eaf4fd', ageMin:30, ageMax:44,  desc:'30〜44歳'},
-  {id:'mgr',    name:'管理職候補', icon:'◆', color:'#8e44ad', bg:'#f5eef8', ageMin:35, ageMax:49,  desc:'35〜49歳'},
-  {id:'senior', name:'即戦力',     icon:'■', color:'#e67e22', bg:'#fef5e7', ageMin:30, ageMax:55,  desc:'経験者・年齢不問'},
-  {id:'expert', name:'専門職',     icon:'●', color:'#1a5276', bg:'#eaf0fb', ageMin:0,  ageMax:999, desc:'資格・技術重視'},
-  {id:'any',    name:'年齢不問',   icon:'○', color:'#7f8c8d', bg:'#f2f3f4', ageMin:0,  ageMax:999, desc:'柔軟に対応'},
+  {id:'young',  name:'若手',       icon:'★', color:'#2ecc71', bg:'#eafaf1', ageMin:0,  ageMax:29, desc:'〜29歳'},
+  {id:'mid',    name:'中堅',       icon:'▲', color:'#3498db', bg:'#eaf4fd', ageMin:30, ageMax:39, desc:'30代'},
+  {id:'mgr',    name:'管理職候補', icon:'◆', color:'#8e44ad', bg:'#f5eef8', ageMin:35, ageMax:49, desc:'35〜49歳'},
+  {id:'senior', name:'即戦力',     icon:'■', color:'#e67e22', bg:'#fef5e7', ageMin:30, ageMax:49, desc:'30〜40代'},
+  {id:'expert', name:'専門職',     icon:'●', color:'#1a5276', bg:'#eaf0fb', ageMin:40, ageMax:49, desc:'40代'},
+  {id:'any',    name:'年齢不問',   icon:'○', color:'#7f8c8d', bg:'#f2f3f4', ageMin:20, ageMax:49, desc:'20〜40代'},
 ];
 function catById(id){return CATEGORIES.find(c=>c.id===id);}
 
@@ -400,10 +408,14 @@ function slotsForBand(fd,bandLabel){return getSlots(fd).filter(s=>bandsForCat(s.
 
 function slotHtml(fd,s){
   const cat=catById(s.catId);
-  return `<div class="slot${s.hired?' hired':''}">
-    <input type="checkbox" class="slot-check" ${s.hired?'checked':''} onchange="toggleHiredInFirebase('${esc(fd)}','${s.id}',${s.hired})">
-    <span class="slot-tag" style="background:${cat.bg};color:${cat.color};border:1px solid ${cat.color}40;">${cat.icon} ${cat.name}</span>
-    <span class="slot-del" onclick="deleteSlotFromFirebase('${esc(fd)}','${s.id}')">x</span>
+  const tooltipHtml=s.comment?`<div class="tooltip">${s.comment}</div>`:'';
+  return `<div class="slot-wrap">
+    ${tooltipHtml}
+    <div class="slot${s.hired?' hired':''}">
+      <input type="checkbox" class="slot-check" ${s.hired?'checked':''} onchange="toggleHiredInFirebase('${esc(fd)}','${s.id}',${s.hired})">
+      <span class="slot-tag" style="background:${cat.bg};color:${cat.color};border:1px solid ${cat.color}40;">${cat.icon} ${cat.name}${s.comment?' 💬':''}</span>
+      <span class="slot-del" onclick="deleteSlotFromFirebase('${esc(fd)}','${s.id}')">x</span>
+    </div>
   </div>`;
 }
 
@@ -497,10 +509,15 @@ function selectCat(id){
   document.getElementById('cat-'+id).style.background=cat.bg;
   document.getElementById('modal-ok').disabled=false;
 }
-function closeModal(){document.getElementById('modal-bg').classList.remove('show');_pendingFd=null;_selectedCat=null;}
+function closeModal(){
+  document.getElementById('modal-bg').classList.remove('show');
+  document.getElementById('modal-comment').value='';
+  _pendingFd=null;_selectedCat=null;
+}
 function confirmAdd(){
   if(!_pendingFd||!_selectedCat)return;
-  addSlotToFirebase(_pendingFd,_selectedCat);
+  const comment=document.getElementById('modal-comment').value.trim();
+  addSlotToFirebase(_pendingFd,_selectedCat,comment);
   closeModal();
 }
 function esc(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
