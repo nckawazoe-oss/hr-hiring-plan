@@ -520,13 +520,17 @@ function openModal(fd,deptLabel){
   _pendingFd=fd;_selectedCat=null;
   document.getElementById('modal-dept-label').textContent=deptLabel;
   document.getElementById('modal-ok').disabled=true;
+  document.getElementById('modal-comment').value='';
   document.getElementById('cat-grid').innerHTML=CATEGORIES.map(c=>`
     <button class="cat-btn" id="cat-${c.id}" onclick="selectCat('${c.id}')" style="border-color:#eee;">
       <div class="cat-icon">${c.icon}</div>
       <div class="cat-name" style="color:${c.color};">${c.name}</div>
       <div class="cat-range">${c.desc}</div>
     </button>`).join('');
-  document.getElementById('modal-bg').classList.add('show');
+  // overflow:autoの親要素の影響を受けないようbody直下に移動
+  const modal=document.getElementById('modal-bg');
+  document.body.appendChild(modal);
+  modal.classList.add('show');
 }
 function selectCat(id){
   _selectedCat=id;
