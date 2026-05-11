@@ -223,13 +223,13 @@ async function upsertPlan(p) {
   setStatus('saving', '保存中…');
   try {
     const payload = {
-      position_id: p.position_id, dept: p.dept, job: p.job, num: p.num,
+      dept: p.dept, job: p.job, num: p.num,
       must_req: p.must_req, nice_req: p.nice_req, channel: p.channel,
       priority: p.priority, join_date: p.join_date||'',
       sort_order: p.sort_order, step_checks: p.step_checks||'[]',
       updated_at: new Date().toISOString()
     };
-    await apiFetch('?on_conflict=position_id', 'POST', payload);
+    await apiFetch('?position_id=eq.' + p.position_id, 'PATCH', payload);
     setStatus('saved', '保存済み ' + now());
   } catch(e) { setStatus('err', '保存エラー'); console.error(e); }
 }
