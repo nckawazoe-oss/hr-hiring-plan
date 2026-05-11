@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>採用計画管理</title>
+<style>
+  :root {
+    --blue: #1F4E79;
+    --blue-light: #D6E4F0;
+    --blue-mid: #2E75B6;
+    --urgent: #C00000;
+    --urgent-bg: #FFE0E0;
+    --plan-bg: #FFF2CC;
+    --plan-txt: #7F6000;
+    --opp-bg: #F2F2F2;
+    --opp-txt: #595959;
+    --border: #CCCCCC;
+    --text: #222;
+    --text-muted: #666;
+    --bg: #F7F8FA;
+    --white: #fff;
+    --radius: 8px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Meiryo", "メイリオ", "Hiragino Kaku Gothic Pro", sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+  header { background: var(--blue); color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 16px; font-weight: bold; letter-spacing: 0.04em; }
+  .header-right { display: flex; align-items: center; gap: 10px; font-size: 12px; opacity: 0.85; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #aaa; display: inline-block; }
+  .status-dot.saved { background: #4CAF50; }
+  .status-dot.saving { background: #FFC107; }
+  .status-dot.err { background: #f44336; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px 16px; }
+
+  .toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  button { cursor: pointer; border-radius: var(--radius); border: 1px solid var(--border); background: var(--white); color: var(--text); font-size: 13px; font-family: inherit; padding: 7px 14px; transition: background 0.15s; }
+  button:hover { background: #eef2f7; }
+  button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  button.primary:hover { background: #174070; }
+  .count-badge { margin-left: auto; font-size: 12px; color: var(--text-muted); }
+
+  .legend { display: flex; gap: 14px; margin-bottom: 10px; font-size: 12px; align-items: center; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  .tbl-wrap { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); background: var(--white); }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  th { background: var(--blue); color: #fff; font-size: 12px; font-weight: bold; padding: 9px 10px; text-align: left; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.15); }
+  th:last-child { border-right: none; }
+  td { padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; border-right: 1px solid #f0f0f0; }
+  td:last-child { border-right: none; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f0f5fb; }
+  tr.expanded td { background: #f0f5fb; }
+
+  .editable { display: block; border-radius: 4px; padding: 3px 5px; min-height: 20px; line-height: 1.5; outline: none; white-space: pre-wrap; word-break: break-all; }
+  .editable:hover { background: #e8eef5; }
+  .editable:focus { background: #fff; outline: 2px solid var(--blue-mid); }
+
+  select.pri-sel { font-size: 12px; padding: 3px 6px; border-radius: var(--radius); border: 1px solid var(--border); background: transparent; font-family: inherit; width: 100%; }
+
+  .date-wrap input[type=date] { font-size: 12px; padding: 4px 6px; border-radius: var(--radius); border: 1px solid var(--border); width: 100%; font-family: inherit; background: var(--white); }
+  .sched-btn { margin-top: 5px; font-size: 11px; padding: 3px 8px; display: flex; align-items: center; gap: 4px; width: 100%; color: var(--blue-mid); border-color: var(--blue-light); background: var(--blue-light); }
+  .sched-btn:hover { background: #b8d4e8; }
+  .arrow { display: inline-block; transition: transform 0.18s; font-size: 10px; }
+  .arrow.open { transform: rotate(90deg); }
+
+  .sched-row td { padding: 0; background: #f8fafc; }
+  .sched-inner { display: none; padding: 14px 18px; }
+  .sched-inner.open { display: block; }
+  .tl-grid { display: grid; gap: 6px; max-width: 700px; }
+  .tl-row { display: grid; grid-template-columns: 160px 76px 1fr; align-items: center; gap: 10px; font-size: 12px; }
+  .tl-label { color: var(--text-muted); }
+  .tl-date { font-weight: bold; }
+  .tl-bar-wrap { height: 6px; background: #e0e0e0; border-radius: 3px; position: relative; }
+  .tl-bar { height: 6px; border-radius: 3px; position: absolute; top: 0; left: 0; }
+  .tl-dot { position: absolute; top: 50%; width: 11px; height: 11px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid; }
+  .tl-row.past .tl-label, .tl-row.past .tl-date { color: #bbb; }
+  .no-date-msg { font-size: 12px; color: var(--text-muted); padding: 2px 0; }
+
+  .del-btn { background: none; border: none; color: #ccc; font-size: 16px; padding: 2px 5px; border-radius: 4px; }
+  .del-btn:hover { color: var(--urgent); background: var(--urgent-bg); }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: bold; padding: 2px 9px; border-radius: 20px; }
+  .badge-urgent { background: var(--urgent-bg); color: var(--urgent); }
+  .badge-plan { background: var(--plan-bg); color: var(--plan-txt); }
+  .badge-opp { background: var(--opp-bg); color: var(--opp-txt); }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal { background: var(--white); border-radius: var(--radius); padding: 22px; width: 460px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+  .modal h3 { font-size: 15px; font-weight: bold; margin-bottom: 16px; color: var(--blue); }
+  .form-row { margin-bottom: 12px; }
+  .form-row label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; font-weight: bold; }
+  .form-row input, .form-row select, .form-row textarea { width: 100%; font-size: 13px; padding: 7px 10px; border-radius: var(--radius); border: 1px solid var(--border); font-family: inherit; background: var(--white); }
+  .form-row textarea { min-height: 56px; resize: vertical; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .modal-btns .save { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+  .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--blue); color: #fff; padding: 10px 18px; border-radius: var(--radius); font-size: 13px; z-index: 200; opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📋 採用計画管理</h1>
+  <div class="header-right">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">読み込み中…</span>
+  </div>
+</header>
+
+<div class="container">
+  <div class="toolbar">
+    <button class="primary" onclick="openAdd()">＋ ポジション追加</button>
+    <button onclick="exportCSV()">↓ CSV出力</button>
+    <button onclick="loadData()" title="最新データを読み込む">↺ 更新</button>
+    <span class="count-badge" id="count-label"></span>
+  </div>
+
+  <div class="legend">
+    <span style="font-size:12px;color:var(--text-muted);font-weight:bold;">凡例：</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--urgent)"></span>急務</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#EF9F27"></span>対応予定</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#888"></span>機会採用</span>
+  </div>
+
+  <div class="tbl-wrap" id="table-area">
+    <div class="loading">データを読み込んでいます…</div>
+  </div>
+</div>
+
+<div id="modal-container"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://tsyewsgwbkigmkkgjreq.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzeWV3c2d3YmtpZ21ra2dqcmVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1OTE3NzEsImV4cCI6MjA5MDE2Nzc3MX0.hUQwrY97pMn4Fump220Ra4x1_bbc0EGar51qFGCGUWY';
+const API = SUPABASE_URL + '/rest/v1/recruitment_plans';
+const HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+
+const BAR_COLORS = { urgent: '#C00000', plan: '#EF9F27', opp: '#888888' };
+const STEPS = [
+  { label: '要件定義・求人票作成', weeks: -10 },
+  { label: '媒体・エージェント掲載開始', weeks: -8 },
+  { label: '書類選考', weeks: -6 },
+  { label: '一次面接', weeks: -4 },
+  { label: '最終面接', weeks: -2 },
+  { label: '内定', weeks: -1 },
+  { label: '入社', weeks: 0 },
+];
+const DEFAULT_DATA = [
+  { position_id:1, dept:'技術部門', job:'電気設計', num:'1〜2名', must_req:'電気設計の実務経験\n電気系資格（電気工事士等）', nice_req:'昇降機・機械設備の設計経験\nCAD操作スキル', channel:'人材紹介エージェント\n求人媒体（転職サイト）', flow:'書類→一次（人事）→技術面接→最終', priority:'urgent', join_date:'', sort_order:1 },
+  { position_id:2, dept:'広報部門', job:'管理職候補', num:'1名', must_req:'広報・PR実務経験5年以上\nマネジメント経験または素養', nice_req:'メディアリレーションズ経験\nSNS・デジタル広報の知見', channel:'人材紹介エージェント', flow:'書類→一次（人事）→最終（役員）', priority:'urgent', join_date:'', sort_order:2 },
+  { position_id:3, dept:'工務部門', job:'施工管理（立体駐車）', num:'1名', must_req:'施工管理の実務経験\n30代・現場勤務可', nice_req:'施工管理技士資格\n機械設備工事の経験', channel:'求人媒体\n人材紹介エージェント', flow:'書類→一次（人事）→現場責任者→最終', priority:'plan', join_date:'', sort_order:3 },
+  { position_id:4, dept:'生産部門', job:'購買担当', num:'1名', must_req:'購買・調達の実務経験\n英語ビジネスレベル・為替知識', nice_req:'海外サプライヤー折衝経験\n製造業でのバイヤー経験', channel:'求人媒体\n人材紹介エージェント', flow:'書類→一次（人事）→部門面接→最終', priority:'plan', join_date:'', sort_order:4 },
+  { position_id:5, dept:'生産部門', job:'生産管理', num:'1名', must_req:'生産管理の実務経験\n30〜40代', nice_req:'製造業での生産管理経験\nERPシステム操作経験', channel:'求人媒体\n人材紹介エージェント', flow:'書類→一次（人事）→部門面接→最終', priority:'plan', join_date:'', sort_order:5 },
+  { position_id:6, dept:'営業部門', job:'営業', num:'1名', must_req:'法人営業の実務経験', nice_req:'機械・設備業界での営業経験', channel:'求人媒体（常時掲載）\nスカウト', flow:'書類→面接（複数回）→最終', priority:'opp', join_date:'', sort_order:6 },
+];
+
+let plans = [];
+let nextPosId = 7;
+let saveTimer = null;
+
+function setStatus(type, text) {
+  const dot = document.getElementById('status-dot');
+  const tx = document.getElementById('status-text');
+  dot.className = 'status-dot ' + type;
+  tx.textContent = text;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function apiFetch(path, method='GET', body=null) {
+  const opts = { method, headers: HEADERS };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  if (!res.ok) throw new Error(await res.text());
+  return method === 'DELETE' ? null : res.json();
+}
+
+async function loadData() {
+  setStatus('saving', '読み込み中…');
+  try {
+    const data = await apiFetch('?order=sort_order.asc');
+    if (data.length === 0) {
+      await seedDefault();
+      return;
+    }
+    plans = data;
+    nextPosId = Math.max(...plans.map(p => p.position_id)) + 1;
+    render();
+    const now = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    setStatus('saved', '読込完了 ' + now);
+  } catch(e) {
+    setStatus('err', '読み込みエラー');
+    console.error(e);
+  }
+}
+
+async function seedDefault() {
+  try {
+    await apiFetch('', 'POST', DEFAULT_DATA);
+    await loadData();
+  } catch(e) {
+    setStatus('err', '初期データ投入エラー');
+  }
+}
+
+async function upsertPlan(p) {
+  setStatus('saving', '保存中…');
+  try {
+    const payload = {
+      position_id: p.position_id, dept: p.dept, job: p.job, num: p.num,
+      must_req: p.must_req, nice_req: p.nice_req, channel: p.channel,
+      flow: p.flow, priority: p.priority, join_date: p.join_date||'',
+      sort_order: p.sort_order, updated_at: new Date().toISOString()
+    };
+    await apiFetch('?on_conflict=position_id', 'POST', payload);
+    const now = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    setStatus('saved', '保存済み ' + now);
+  } catch(e) {
+    setStatus('err', '保存エラー');
+    console.error(e);
+  }
+}
+
+async function deletePlan(posId) {
+  setStatus('saving', '削除中…');
+  try {
+    await apiFetch('?position_id=eq.' + posId, 'DELETE');
+    plans = plans.filter(p => p.position_id !== posId);
+    render();
+    const now = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    setStatus('saved', '削除完了 ' + now);
+    showToast('削除しました');
+  } catch(e) {
+    setStatus('err', '削除エラー');
+  }
+}
+
+function scheduleSave(p) {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => upsertPlan(p), 1000);
+}
+
+function priLabel(p) { return p==='urgent'?'急務':p==='plan'?'対応予定':'機会採用'; }
+function priClass(p) { return 'badge badge-'+(p==='urgent'?'urgent':p==='plan'?'plan':'opp'); }
+
+function addWeeks(date, w) { const d = new Date(date); d.setDate(d.getDate()+w*7); return d; }
+function fmtDate(d) { return d.toLocaleDateString('ja-JP',{month:'short',day:'numeric'}); }
+
+function schedHTML(p) {
+  if (!p.join_date) return '<div class="no-date-msg">入社目標日を入力するとスケジュールを逆算します</div>';
+  const join = new Date(p.join_date);
+  const start = addWeeks(join, STEPS[0].weeks);
+  const totalMs = join - start;
+  const today = new Date();
+  let html = '<div class="tl-grid">';
+  STEPS.forEach(st => {
+    const d = addWeeks(join, st.weeks);
+    const pct = Math.max(0, Math.min(100, (d-start)/totalMs*100));
+    const past = d < today;
+    const col = BAR_COLORS[p.priority];
+    html += `<div class="tl-row${past?' past':''}">
+      <span class="tl-label">${st.label}</span>
+      <span class="tl-date">${fmtDate(d)}</span>
+      <div class="tl-bar-wrap">
+        <div class="tl-bar" style="width:${pct}%;background:${col};opacity:${past?0.25:0.85}"></div>
+        <div class="tl-dot" style="left:${pct}%;background:${past?'#eee':col};border-color:${col};opacity:${past?0.4:1}"></div>
+      </div>
+    </div>`;
+  });
+  return html + '</div>';
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function render() {
+  const area = document.getElementById('table-area');
+  area.innerHTML = `<table>
+  <colgroup>
+    <col style="width:90px"><col style="width:110px"><col style="width:55px">
+    <col style="width:150px"><col style="width:130px">
+    <col style="width:115px"><col style="width:130px">
+    <col style="width:64px"><col style="width:114px"><col style="width:36px">
+  </colgroup>
+  <thead><tr>
+    <th>部門</th><th>職種</th><th>人数</th>
+    <th>採用要件（必須）</th><th>採用要件（歓迎）</th>
+    <th>採用チャネル</th><th>選考フロー</th>
+    <th>優先度</th><th>📅 入社目標日</th><th></th>
+  </tr></thead>
+  <tbody id="plan-body"></tbody></table>`;
+
+  const tbody = document.getElementById('plan-body');
+  plans.forEach(p => {
+    const dr = document.createElement('tr');
+    dr.className = 'data-row';
+    dr.id = 'row-' + p.position_id;
+    dr.innerHTML = `
+      <td><span class="editable" contenteditable="true" onblur="saveField(${p.position_id},'dept',this)">${esc(p.dept)}</span></td>
+      <td><span class="editable" contenteditable="true" onblur="saveField(${p.position_id},'job',this)">${esc(p.job)}</span></td>
+      <td><span class="editable" contenteditable="true" onblur="saveField(${p.position_id},'num',this)">${esc(p.num)}</span></td>
+      <td><span class="editable" contenteditable="true" onblur="saveField(${p.position_id},'must_req',this)">${esc(p.must_req)}</span></td>
+      <td><span class="editable" contenteditable="true" onblur="saveField(${p.position_id},'nice_req',this)">${esc(p.nice_req)}</span></td>
+      <td><span class="editable" contenteditable="true" onblur="saveField(${p.position_id},'channel',this)">${esc(p.channel)}</span></td>
+      <td><span class="editable" contenteditable="true" onblur="saveField(${p.position_id},'flow',this)">${esc(p.flow)}</span></td>
+      <td><select class="pri-sel" onchange="savePri(${p.position_id},this.value)">
+        <option value="urgent"${p.priority==='urgent'?' selected':''}>急務</option>
+        <option value="plan"${p.priority==='plan'?' selected':''}>対応予定</option>
+        <option value="opp"${p.priority==='opp'?' selected':''}>機会採用</option>
+      </select></td>
+      <td class="date-wrap">
+        <input type="date" value="${p.join_date||''}" onchange="saveDate(${p.position_id},this.value)">
+        ${p.join_date?`<button class="sched-btn" id="ebtn-${p.position_id}" onclick="toggleSched(${p.position_id})"><span class="arrow" id="arr-${p.position_id}">▶</span> スケジュール確認</button>`:''}
+      </td>
+      <td><button class="del-btn" onclick="confirmDel(${p.position_id})" title="削除">🗑</button></td>`;
+    tbody.appendChild(dr);
+
+    const sr = document.createElement('tr');
+    sr.className = 'sched-row';
+    sr.id = 'sched-' + p.position_id;
+    sr.innerHTML = `<td colspan="10"><div class="sched-inner" id="sched-inner-${p.position_id}">${schedHTML(p)}</div></td>`;
+    tbody.appendChild(sr);
+  });
+  document.getElementById('count-label').textContent = plans.length + '件';
+}
+
+function toggleSched(id) {
+  const inner = document.getElementById('sched-inner-' + id);
+  const arr = document.getElementById('arr-' + id);
+  const row = document.getElementById('row-' + id);
+  const open = inner.classList.toggle('open');
+  if(arr) arr.classList.toggle('open', open);
+  if(row) row.classList.toggle('expanded', open);
+}
+
+function saveField(posId, field, el) {
+  const p = plans.find(x => x.position_id === posId);
+  if(!p) return;
+  p[field] = el.innerText.trim();
+  scheduleSave(p);
+}
+
+function savePri(posId, val) {
+  const p = plans.find(x => x.position_id === posId);
+  if(!p) return;
+  p.priority = val;
+  const inner = document.getElementById('sched-inner-' + posId);
+  if(inner) inner.innerHTML = schedHTML(p);
+  scheduleSave(p);
+}
+
+function saveDate(posId, val) {
+  const p = plans.find(x => x.position_id === posId);
+  if(!p) return;
+  p.join_date = val;
+  render();
+  upsertPlan(p);
+  if(val) setTimeout(() => {
+    const inner = document.getElementById('sched-inner-' + posId);
+    const arr = document.getElementById('arr-' + posId);
+    const row = document.getElementById('row-' + posId);
+    if(inner) inner.classList.add('open');
+    if(arr) arr.classList.add('open');
+    if(row) row.classList.add('expanded');
+  }, 30);
+}
+
+function confirmDel(posId) {
+  const p = plans.find(x => x.position_id === posId);
+  if(!p) return;
+  if(!confirm(`「${p.dept} / ${p.job}」を削除しますか？`)) return;
+  deletePlan(posId);
+}
+
+function openAdd() {
+  const m = document.createElement('div');
+  m.className = 'modal-bg';
+  m.id = 'add-modal';
+  m.innerHTML = `<div class="modal">
+    <h3>＋ ポジション追加</h3>
+    <div class="form-row"><label>部門</label><input id="f-dept" placeholder="例：技術部門"></div>
+    <div class="form-row"><label>職種</label><input id="f-job" placeholder="例：電気設計"></div>
+    <div class="form-row"><label>採用人数</label><input id="f-num" placeholder="例：1名"></div>
+    <div class="form-row"><label>採用要件（必須）</label><textarea id="f-must" placeholder="複数行可"></textarea></div>
+    <div class="form-row"><label>採用要件（歓迎）</label><textarea id="f-nice" placeholder="複数行可"></textarea></div>
+    <div class="form-row"><label>採用チャネル</label><input id="f-ch" placeholder="例：人材紹介エージェント"></div>
+    <div class="form-row"><label>選考フロー</label><input id="f-flow" placeholder="例：書類→一次→最終"></div>
+    <div class="form-row"><label>優先度</label>
+      <select id="f-pri"><option value="urgent">急務</option><option value="plan" selected>対応予定</option><option value="opp">機会採用</option></select>
+    </div>
+    <div class="form-row"><label>入社目標日（任意）</label><input type="date" id="f-date"></div>
+    <div class="modal-btns">
+      <button onclick="closeModal()">キャンセル</button>
+      <button class="save" onclick="addPlan()">追加する</button>
+    </div>
+  </div>`;
+  document.getElementById('modal-container').appendChild(m);
+}
+
+function closeModal() { const m = document.getElementById('add-modal'); if(m) m.remove(); }
+
+async function addPlan() {
+  const g = id => document.getElementById(id).value.trim();
+  const newPlan = {
+    position_id: nextPosId++,
+    dept: g('f-dept')||'未設定', job: g('f-job')||'未設定', num: g('f-num')||'1名',
+    must_req: g('f-must'), nice_req: g('f-nice'), channel: g('f-ch'),
+    flow: g('f-flow'), priority: g('f-pri')||'plan',
+    join_date: g('f-date'), sort_order: plans.length + 1,
+    updated_at: new Date().toISOString()
+  };
+  closeModal();
+  try {
+    const res = await apiFetch('', 'POST', newPlan);
+    plans.push(Array.isArray(res) ? res[0] : res);
+    render();
+    showToast('追加しました');
+    setStatus('saved', '保存済み');
+  } catch(e) {
+    setStatus('err', '追加エラー');
+  }
+}
+
+function exportCSV() {
+  const h = ['部門','職種','人数','採用要件（必須）','採用要件（歓迎）','採用チャネル','選考フロー','優先度','入社目標日'];
+  const rows = plans.map(p => [p.dept,p.job,p.num,p.must_req,p.nice_req,p.channel,p.flow,priLabel(p.priority),p.join_date]
+    .map(v => '"'+String(v||'').replace(/"/g,'""')+'"').join(','));
+  const csv = '\uFEFF' + [h.join(','), ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = '採用計画書_' + new Date().toLocaleDateString('ja-JP').replace(/\//g,'-') + '.csv';
+  a.click();
+}
+
+loadData();
+</script>
+</body>
+</html>
